@@ -69,7 +69,7 @@ module.exports.scrapeTemp = async (event) => {
     })
     .then(async (items) => {
       if (items.length > 0) {
-        console.log("Found new Item");
+        console.log(`Found ${items.length} new Items`);
         let prevTime;
         items.map(async (data) => {
           if (prevTime === data.time) {
