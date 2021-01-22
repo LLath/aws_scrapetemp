@@ -8,6 +8,7 @@ const regexURL = /(?<=href=")(https:\/\/.*?)(?=")/;
 const regexTime = /(?<=datetime=").*?(?=")/;
 
 const scrapeArticles = (URL) => {
+  console.log("Scan Article", URL);
   return new Promise((resolve, reject) =>
     fetch(URL)
       .then((res) => res.text())
@@ -39,7 +40,7 @@ const scrapeArticles = (URL) => {
         }));
         resolve(result);
       })
-  ).catch((error) => console.error(error));
+  );
 };
 
 module.exports = { scrapeArticles };

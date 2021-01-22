@@ -29,14 +29,17 @@ const getLastItem = () => {
 };
 
 module.exports.scrapeTemp = async (event) => {
+  console.log("Start scraping");
   const resArr = [];
-  Promise.all(
+  await Promise.all(
     URLARR.map((url) =>
       scrapeArticles(url).then((articles) => resArr.push(...articles))
     )
   )
     .then(() => {
-      getLastItem().then(({ Items }) => {
+      console.log("Scan for last Item");
+      return getLastItem().then(({ Items }) => {
+        let inFunction = true;
         const sortResArr = resArr.sort(
           (a, b) => new Date(a.time) - new Date(b.time)
         );
@@ -47,8 +50,9 @@ module.exports.scrapeTemp = async (event) => {
           newItems = sortResArr.slice(indexItem + 1);
         }
         if (newItems.length > 0) {
+          console.log("Found new Item");
           let prevTime;
-          newItems.forEach((data) => {
+          newItems.forEach((data, index) => {
             if (prevTime === data.time) {
               data.time += 1;
             }
@@ -60,20 +64,25 @@ module.exports.scrapeTemp = async (event) => {
             };
             dynamoDb.put(params, (err, data) => {
               console.log("Put Item");
-              if (err) return err;
-              else return data;
+              if (err) console.error(err);
+              else console.log("End Putting");
             });
+            if (index === newItems.length) inFunction = false;
           });
           // End forEach
-        } else return null;
+        } else console.log("No new Items found");
+        return inFunction;
       });
     })
-    .then(() => {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: "Success!",
-        }),
-      };
+    .then((v) => {
+      if (!v) {
+        console.log("End Scraping");
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: "Success!",
+          }),
+        };
+      }
     });
 };
