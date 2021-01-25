@@ -40,6 +40,7 @@ const getLastItem = () => {
 const putItems = async (params) => {
   console.log("Put Item");
   await dynamoDb.putAsync(params);
+  console.log("End Put Item");
 };
 
 module.exports.scrapeTemp = async (event) => {
@@ -71,27 +72,38 @@ module.exports.scrapeTemp = async (event) => {
       if (items.length > 0) {
         console.log(`Found ${items.length} new Items`);
         let prevTime;
-        items.map(async (data) => {
-          if (prevTime === data.time) {
-            data.time += 1;
-          }
-          prevTime = data.time;
-          const params = {
-            TableName: TABLE_NAME,
-            Item: data,
-          };
-          await putItems(params);
+        const promEach = new Promise((resolve, reject) => {
+          items.forEach(async (data, index) => {
+            if (prevTime === data.time) {
+              data.time += 1;
+            }
+            prevTime = data.time;
+            const params = {
+              TableName: TABLE_NAME,
+              Item: data,
+            };
+            await putItems(params);
+            if (items.length === index + 1) resolve();
+          });
+          // End forEach
         });
-        // End forEach
-      } else console.log("No new Items found");
-    })
-    .then(() => {
-      console.log("End Scraping");
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: "Success!",
-        }),
-      };
+        promEach.then(() => {
+          console.log("End Scraping");
+          return {
+            statusCode: 200,
+            body: JSON.stringify({
+              message: "Success!",
+            }),
+          };
+        });
+      } else {
+        console.log("No new Items found!");
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: "No new Items found!",
+          }),
+        };
+      }
     });
 };
