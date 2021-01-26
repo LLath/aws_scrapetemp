@@ -37,10 +37,31 @@ const getLastItem = () => {
   return dynamoDb.query(params).promise();
 };
 
-const putItems = async (params) => {
-  console.log("Put Item");
-  await dynamoDb.putAsync(params);
-  console.log("End Put Item");
+const putItems = async (items) => {
+  const promItems = new Promise(async (resolve, reject) => {
+    if (items.length > 0) {
+      console.log(`Found ${items.length} new Items`);
+      let prevTime;
+      items.forEach(async (data, index) => {
+        console.log("Put Item");
+        if (prevTime === data.time) {
+          data.time += 1;
+        }
+        prevTime = data.time;
+        const params = {
+          TableName: TABLE_NAME,
+          Item: data,
+        };
+        await dynamoDb.putAsync(params);
+        if (items.length === index + 1) resolve();
+      });
+      // console.log("End Put Item");
+    } else {
+      reject();
+    }
+  });
+  // End forEach
+  await promItems;
 };
 
 module.exports.scrapeTemp = async (event) => {
@@ -69,25 +90,8 @@ module.exports.scrapeTemp = async (event) => {
       });
     })
     .then(async (items) => {
-      if (items.length > 0) {
-        console.log(`Found ${items.length} new Items`);
-        let prevTime;
-        const promEach = new Promise((resolve, reject) => {
-          items.forEach(async (data, index) => {
-            if (prevTime === data.time) {
-              data.time += 1;
-            }
-            prevTime = data.time;
-            const params = {
-              TableName: TABLE_NAME,
-              Item: data,
-            };
-            await putItems(params);
-            if (items.length === index + 1) resolve();
-          });
-          // End forEach
-        });
-        promEach.then(() => {
+      await putItems(items)
+        .then(() => {
           console.log("End Scraping");
           return {
             statusCode: 200,
@@ -95,15 +99,15 @@ module.exports.scrapeTemp = async (event) => {
               message: "Success!",
             }),
           };
+        })
+        .catch(() => {
+          console.log("No new Items found!");
+          return {
+            statusCode: 200,
+            body: JSON.stringify({
+              message: "No new Items found!",
+            }),
+          };
         });
-      } else {
-        console.log("No new Items found!");
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            message: "No new Items found!",
-          }),
-        };
-      }
     });
 };
