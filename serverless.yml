@@ -9,25 +9,27 @@ service: scrapeKRNewsTemp
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs16.x
   stage: dev
   region: eu-central-1
   environment:
     DYNAMODB_TABLE: TempKRNews
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:UpdateItem
-        - dynamodb:PutItem
-        - dynamodb:Scan
-        - dynamodb:Query
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-        - dynamodb:Scan
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}/index/*"
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}/index/*"
 
 functions:
   scrapeTemp:
@@ -37,61 +39,58 @@ functions:
 
 # you can add CloudFormation resource templates here
 resources:
- Resources:
-   TempKRNews:
-     Type: AWS::DynamoDB::Table
-     Properties:
-      TableName: TempKRNews
-      AttributeDefinitions:
-        - AttributeName: master
-          AttributeType: S
-        - AttributeName: time
-          AttributeType: S
-      KeySchema:
-        - AttributeName: master
-          KeyType: HASH
-        - AttributeName: time
-          KeyType: RANGE
-      GlobalSecondaryIndexes:
-      - IndexName: AllTempNewsByOrder
+  Resources:
+    TempKRNews:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TempKRNews
+        AttributeDefinitions:
+          - AttributeName: master
+            AttributeType: S
+          - AttributeName: time
+            AttributeType: S
         KeySchema:
           - AttributeName: master
             KeyType: HASH
           - AttributeName: time
             KeyType: RANGE
-        Projection:
-          ProjectionType: "ALL"
-      BillingMode: PAY_PER_REQUEST
-   AppSyncServiceRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: "Dynamo-AppSyncServiceRole"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          -
-            Effect: "Allow"
-            Principal:
-              Service:
-                - "appsync.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      Policies:
-        -
-          PolicyName: "Dynamo-AppSyncServiceRole-Policy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              -
-                Effect: "Allow"
-                Action:
-                  - "dynamodb:Query"
-                  - "dynamodb:BatchWriteItem"
-                  - "dynamodb:GetItem"
-                  - "dynamodb:DeleteItem"
-                  - "dynamodb:PutItem"
-                  - "dynamodb:Scan"
-                  - "dynamodb:UpdateItem"
-                Resource:
-                  - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
-                  - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}/index/*"
+        GlobalSecondaryIndexes:
+          - IndexName: AllTempNewsByOrder
+            KeySchema:
+              - AttributeName: master
+                KeyType: HASH
+              - AttributeName: time
+                KeyType: RANGE
+            Projection:
+              ProjectionType: "ALL"
+        BillingMode: PAY_PER_REQUEST
+    AppSyncServiceRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: "Dynamo-AppSyncServiceRole"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - "appsync.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Policies:
+          - PolicyName: "Dynamo-AppSyncServiceRole-Policy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:Query"
+                    - "dynamodb:BatchWriteItem"
+                    - "dynamodb:GetItem"
+                    - "dynamodb:DeleteItem"
+                    - "dynamodb:PutItem"
+                    - "dynamodb:Scan"
+                    - "dynamodb:UpdateItem"
+                  Resource:
+                    - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+                    - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}/index/*"
